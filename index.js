@@ -299,4 +299,5 @@ function renderHTML() {
     </body></html>`;
 }
 
-http.listen(PORT, '0.0.0.0', () => console.log('上帝聊天室 6.0 運行中: http://localhost:3000'));
+http.listen(PORT, '0.0.0.0', () => console.log('CooperChat 6.0 運行中'));
+
