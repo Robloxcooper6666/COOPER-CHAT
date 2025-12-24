@@ -5,72 +5,89 @@ const io = require('socket.io')(http);
 
 const PORT = process.env.PORT || 10000;
 
-// 帳號密碼設定（你可以在這裡無腦增加人頭）
+// 【管理員與使用者名單】
 const users = {
-    "CooperChen": "11036666",
-    "Guest": "123456"
+    "CooperChen": { pass: "11036666", role: "admin" }, // 你是管理員
+    "Guest": { pass: "123456", role: "user" }
 };
 
 app.use(express.json());
 
-// 這段代碼會直接產生你看到的網頁介面
 app.get('/', (req, res) => {
     res.send(`
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CooperChat</title>
+    <title>CooperChat ADMIN</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { margin:0; font-family:sans-serif; background:#f0f2f5; display:flex; flex-direction:column; height:100vh; }
-        #login { position:fixed; inset:0; background:white; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10; }
+        body { margin:0; font-family:sans-serif; background:#e5ddd5; display:flex; flex-direction:column; height:100vh; }
+        #login { position:fixed; inset:0; background:#075e54; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10; color:white; }
+        #header { background:#075e54; color:white; padding:15px; text-align:center; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.2); }
         #box { flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:10px; }
-        .m { padding:10px; border-radius:10px; max-width:80%; word-wrap:break-word; background:white; border:1px solid #ddd; }
-        .me { align-self:flex-end; background:#007aff; color:white; border:none; }
-        #in { padding:10px; background:white; display:flex; border-top:1px solid #ddd; }
-        input { flex:1; padding:10px; border:1px solid #ddd; border-radius:20px; outline:none; }
-        button { margin-left:10px; background:#007aff; color:white; border:none; padding:0 20px; border-radius:20px; }
+        .m { padding:10px; border-radius:10px; max-width:80%; word-wrap:break-word; background:white; position:relative; box-shadow:0 1px 1px rgba(0,0,0,0.1); }
+        .me { align-self:flex-end; background:#dcf8c6; }
+        /* 管理員專屬樣式 */
+        .admin-msg { border: 2px solid #ff4d4d !important; }
+        .admin-tag { color: #ff4d4d; font-weight: bold; font-size: 10px; display: block; }
+        
+        #in { padding:10px; background:#f0f0f0; display:flex; gap:5px; }
+        input { flex:1; padding:12px; border:none; border-radius:20px; outline:none; }
+        button { background:#075e54; color:white; border:none; padding:0 20px; border-radius:20px; font-weight:bold; }
     </style>
 </head>
 <body>
     <div id="login">
-        <h2>CooperChat</h2>
-        <input type="text" id="u" placeholder="帳號"><br>
-        <input type="password" id="p" placeholder="密碼"><br>
-        <button onclick="login()">登入</button>
+        <h1>CooperChat</h1>
+        <input type="text" id="u" placeholder="帳號" style="flex:none; width:200px;"><br>
+        <input type="password" id="p" placeholder="密碼" style="flex:none; width:200px;"><br>
+        <button onclick="login()" style="width:200px; height:40px;">進入頻道</button>
     </div>
+    <div id="header">CooperChat 私密頻道</div>
     <div id="box"></div>
     <div id="in">
         <input type="text" id="msg" placeholder="輸入訊息...">
         <button onclick="send()">傳送</button>
     </div>
     <script>
-        let socket, myN = "";
+        let socket, myN = "", myRole = "";
         const uDB = ${JSON.stringify(users)};
+        
         function login() {
             const user = document.getElementById('u').value;
             const pass = document.getElementById('p').value;
-            if(uDB[user] && uDB[user] === pass) {
+            if(uDB[user] && uDB[user].pass === pass) {
                 myN = user;
+                myRole = uDB[user].role;
                 document.getElementById('login').style.display='none';
                 init();
-            } else { alert('錯了喔！'); }
+            } else { alert('身分驗證失敗！'); }
         }
+        
         function init() {
             socket = io();
             socket.on('chat', (d) => {
                 const div = document.createElement('div');
-                div.className = 'm ' + (d.u === myN ? 'me' : '');
-                div.innerHTML = '<b>' + d.u + ':</b> ' + d.t;
+                const isAdmin = d.role === 'admin';
+                div.className = 'm ' + (d.u === myN ? 'me ' : '') + (isAdmin ? 'admin-msg' : '');
+                
+                div.innerHTML = (isAdmin ? '<span class="admin-tag">★ 管理員</span>' : '') + 
+                                '<b>' + d.u + ':</b> ' + d.t;
+                
                 document.getElementById('box').appendChild(div);
-                document.getElementById('box').scrollTop = 99999;
+                document.getElementById('box').scrollTop = 999999;
             });
         }
+        
         function send() {
             const i = document.getElementById('msg');
-            if(i.value) { socket.emit('chat', {u:myN, t:i.value}); i.value=''; }
+            if(i.value) { 
+                socket.emit('chat', {u:myN, t:i.value, role:myRole}); 
+                i.value=''; 
+            }
         }
+        document.getElementById('msg').onkeypress=(e)=>{ if(e.key==='Enter') send(); };
     </script>
 </body>
 </html>
@@ -81,4 +98,4 @@ io.on('connection', (socket) => {
     socket.on('chat', (data) => { io.emit('chat', data); });
 });
 
-http.listen(PORT, '0.0.0.0', () => console.log('OK!'));
+http.listen(PORT, '0.0.0.0', () => console.log('Admin Server Ready!'));
