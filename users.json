@@ -24,5 +24,9 @@
     "name": "ld",
     "pass": "6666",
     "role": "user"
-  }
-]
+  },
+  {
+    "name": "wur",
+    "pass": "11223344",
+    "role": "user"
+ ]
